@@ -3,11 +3,11 @@ import * as babel from "@babel/core";
 import * as fs from "fs";
 
 const code = fs.readFileSync("./test.js").toString();
-console.log(code)
+console.log(code);
 const ast = parse(code, { sourceType: "module" });
 // console.log(ast);
 const res = babel.transformFromAstSync(ast, code, {
   presets: ["@babel/preset-env"],
 });
-
-console.log(res.code)
+fs.writeFileSync("./test.es5.js", res.code);
+console.log(res.code);
