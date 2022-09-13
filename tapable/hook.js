@@ -97,3 +97,83 @@ syncLoopHook.tap('3', (name, age) => {
   return true
 })
 syncLoopHook.call('lc', 18)
+console.log('--------------AsyncParallelHook-----------------')
+const { AsyncParallelHook } = require('tapable')
+let queue = new AsyncParallelHook(['name'])
+
+// 同步注册钩子，按顺序执行回调，不需要等待队列都处理完才出发callAsync回调。
+// 下面的执行答案为：1、2、undefined 错误信息、3
+queue.tap('1', function (name) {
+  console.log(1)
+})
+queue.tap('2', function (name) {
+  console.log(2)
+})
+queue.tap('3', function (name) {
+  setTimeout(() => {
+    console.log(3)
+  }, 3000)
+})
+queue.callAsync('lc', err => {
+  console.log(err, '错误信息')
+})
+
+// 异步注册钩子，需要全部任务完成后才执行callAsync回调
+// callback一旦传入参数，就会走触发监听事件的函数，也就是callAsync
+// 且一旦走过触发监听事件的函数callAsync，就不会再走了。比如有两个callback有入参，那只会是第一个callback执行的时候去执行callAsync，第二个callback不会触发callAsync了。
+queue.tapAsync('1', (name, callback) => {
+  setTimeout(() => {
+    console.log(1)
+    callback(111)
+  }, 1000)
+})
+queue.tapAsync('2', (name, callback) => {
+  setTimeout(() => {
+    console.log(2)
+    callback(222)
+  }, 2000)
+})
+queue.tapAsync('3', (name, callback) => {
+  setTimeout(() => {
+    console.log(3)
+    callback()
+  }, 3000)
+})
+queue.callAsync('lc', err => {
+  console.log(err, '错误信息')
+})
+
+// tapPromise注册钩子，注册时，必须返回一个promise
+// resolve()的参数是没有作用的，reject的参数会传到queue.promise的错误回调中。且一旦触发reject，就会执行promise的错误回调，并不会等到玩不执行完后去执行。当然，执行了reject，也不会阻止事件的继续触发。
+queue.tapPromise('1', name => {
+  return new Promise((resolve, reject) => {
+    setTimeout(function () {
+      console.log(1)
+      resolve(111)
+    }, 1000)
+  })
+})
+queue.tapPromise('1', name => {
+  return new Promise((resolve, reject) => {
+    setTimeout(function () {
+      console.log(2)
+      reject(222)
+    }, 2000)
+  })
+})
+queue.tapPromise('1', name => {
+  return new Promise((resolve, reject) => {
+    setTimeout(function () {
+      console.log(3)
+      resolve()
+    }, 3000)
+  })
+})
+queue.promise('lc').then(
+  res => {
+    console.log('成功触发', res)
+  },
+  err => {
+    console.log('错误触发', err)
+  },
+)
